@@ -109,6 +109,15 @@ function owned<T extends { id: string }>(
     );
   return record;
 }
+function currentTask(state: Workspace, input: Record<string, unknown>) {
+  const task = owned(state.tasks, input);
+  if (input.version !== (task.version || 1))
+    throw new DemoError(
+      "This task changed in another tab. Reload before saving your changes.",
+      409,
+    );
+  return task;
+}
 function limited(records: unknown[]) {
   if (records.length >= 200)
     throw new DemoError(
@@ -256,20 +265,23 @@ function mutate(
         due: date(input, "due"),
       };
       if (input.id) {
-        const existing = owned(state.tasks, input);
-        Object.assign(existing, task);
+        const existing = currentTask(state, input);
+        Object.assign(existing, task, { version: (existing.version || 1) + 1 });
         return existing.id;
       }
       limited(state.tasks);
       const taskId = id("DB");
-      state.tasks.unshift({ id: taskId, ...task });
+      state.tasks.unshift({ id: taskId, version: 1, ...task });
       return taskId;
     }
-    case "task-move":
-      owned(state.tasks, input).status = choice(input, "status", taskStatuses);
+    case "task-move": {
+      const task = currentTask(state, input);
+      task.status = choice(input, "status", taskStatuses);
+      task.version = (task.version || 1) + 1;
       return;
+    }
     case "task-delete": {
-      const task = owned(state.tasks, input);
+      const task = currentTask(state, input);
       state.tasks = state.tasks.filter((t) => t.id !== task.id);
       return;
     }

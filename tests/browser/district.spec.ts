@@ -6,12 +6,13 @@ const root = `${origin}/demo/sites`;
 const future = (days: number) =>
   new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
-test("directory opens seven independent sites and reset restores only the six new workspaces", async ({
+test("directory opens eight independent sites and reset restores only the six new workspaces", async ({
   page,
 }) => {
   await page.goto(root);
   for (const path of [
     "/demo",
+    "/hris",
     ...["haven", "thyme", "daybreak", "gather", "hireline", "careloop"].map(
       (id) => `/demo/sites/${id}`,
     ),
@@ -22,7 +23,7 @@ test("directory opens seven independent sites and reset restores only the six ne
     .getByRole("button", { name: "Save Product Designer", exact: true })
     .click();
   await expect(page.getByRole("status")).toHaveText("Job saved for later.");
-  await page.getByRole("link", { name: "Explore all 7 websites" }).click();
+  await page.getByRole("link", { name: "Explore all 8 websites" }).click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Reset sample workspaces" }).click();
   await expect(page.getByRole("status")).toContainText("reset");

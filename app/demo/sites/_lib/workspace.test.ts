@@ -204,22 +204,26 @@ test("tasks support create, edit, move and delete while validating assignments",
   await action(session.token, {
     ...input,
     id: created.id,
+    version: 1,
     title: "Review the release together",
   });
   const moved = await action(session.token, {
     action: "task-move",
+    version: 2,
     id: created.id,
     status: "Done",
   });
   assert.equal(moved.state.tasks[0].status, "Done");
   const deleted = await action(session.token, {
     action: "task-delete",
+    version: 3,
     id: created.id,
   });
   assert.equal(deleted.state.tasks.length, 12);
   await assert.rejects(
     action(session.token, {
       action: "task-move",
+      version: 1,
       id: created.id,
       status: "Done",
     }),

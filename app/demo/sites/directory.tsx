@@ -11,7 +11,7 @@ export function Directory() {
           <Link href="/demo/sites">
             The Demo District<span>↗</span>
           </Link>
-          <span>SEVEN PLACES TO EXPLORE</span>
+          <span>EIGHT PLACES TO EXPLORE</span>
         </header>
         <main>
           <div className={s.directoryHero}>
@@ -24,21 +24,46 @@ export function Directory() {
             <p>
               Book a getaway. Order lunch. Find your next role.
               <br />
-              Seven independent websites, ready to put through their paces.
+              Eight independent websites, ready to put through their paces.
             </p>
             <div className={s.directoryStats}>
               <span>
-                <strong>7</strong> websites
+                <strong>8</strong> websites
               </span>
               <span>
-                <strong>65</strong> seeded records
+                <strong>74</strong> seeded records
               </span>
               <span>
                 <strong>∞</strong> ways to explore
               </span>
             </div>
           </div>
+          <p>
+            <Link href="/lab">
+              Open the test lab → HRIS roles, login, filters, approval conflicts
+              & recovery
+            </Link>
+          </p>
           <div className={s.directoryGrid}>
+            <Link className={s.directoryCard} href="/hris">
+              <div className={s.directoryArt} style={{ background: "#dce5f4" }}>
+                <span className={s.previewBrand}>
+                  People<span>Time away, thoughtfully managed.</span>
+                </span>
+                <Scene kind="work" color="#afc5e6" />
+              </div>
+              <div className={s.directoryCardBody}>
+                <p className={s.eyebrow}>HRIS · 6 accounts · 3 roles</p>
+                <h2>
+                  People <span>↗</span>
+                </h2>
+                <p>
+                  Request leave, approve your team’s time away, and manage
+                  balances with a complete activity history.
+                </p>
+                <small>Employee → manager approval → HR balances & audit</small>
+              </div>
+            </Link>
             <Link className={s.directoryCard} href="/demo">
               <div className={s.directoryArt} style={{ background: "#e7e0cd" }}>
                 <span className={s.previewBrand}>
@@ -125,7 +150,7 @@ export function Directory() {
               <p>
                 Restore the six new sites to their original sample data. This
                 clears your bookings, food orders, applications, and edits. The
-                store is kept separately.
+                store and People HRIS are kept separately.
               </p>
               <Action
                 input={{ action: "reset", confirm: "RESET" }}

@@ -9,7 +9,13 @@ export async function createTestNamespace() {
 export async function removeTestNamespace(name: string) {
   if (!name.startsWith("test-") && !name.startsWith("e2e-"))
     throw new Error("Refusing to clear a non-test namespace");
-  await getPool().query("DELETE FROM demo_state WHERE namespace=$1", [name]);
+  await getPool().query(
+    "DELETE FROM demo_state WHERE namespace=$1 OR namespace LIKE $2",
+    [name, `${name}:lab:%`],
+  );
+  await getPool().query("DELETE FROM lab_sessions WHERE base_namespace=$1", [
+    name,
+  ]);
 }
 export async function readStoredState(kind: "storefront" | "workspace") {
   const result = await getPool().query(

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useListParam } from "../../shared/list-params";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { events, money, prettyDate } from "./_lib/data";
@@ -21,8 +22,11 @@ import s from "./sites.module.css";
 export function Gather({ path }: { path: string[] }) {
   const { state, act } = useDemo(),
     router = useRouter();
-  const [query, setQuery] = useState(""),
-    [category, setCategory] = useState("All"),
+  const [query, setQuery] = useListParam("q"),
+    [category, setCategory] = useListParam("category", "All", [
+      "All",
+      ...events.map((e) => e.category),
+    ]),
     [quantity, setQuantity] = useState(1);
   if (!state) return <Loading />;
   const available = (eventId: string) =>
@@ -202,8 +206,8 @@ export function Gather({ path }: { path: string[] }) {
   const filtered = events.filter(
     (e) =>
       `${e.title} ${e.location} ${e.description}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()) &&
       (category === "All" || e.category === category),
   );
   return (

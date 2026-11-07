@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useListFlag, useListParam } from "../../shared/list-params";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { jobs, prettyDate } from "./_lib/data";
 import {
   Action,
@@ -19,10 +19,16 @@ import s from "./sites.module.css";
 export function Hireline({ path }: { path: string[] }) {
   const { state, act } = useDemo(),
     router = useRouter();
-  const [query, setQuery] = useState(""),
-    [team, setTeam] = useState("All"),
-    [remote, setRemote] = useState(false),
-    [type, setType] = useState("All");
+  const [query, setQuery] = useListParam("q"),
+    [team, setTeam] = useListParam("team", "All", [
+      "All",
+      ...jobs.map((j) => j.team),
+    ]),
+    [remote, setRemote] = useListFlag("remote"),
+    [type, setType] = useListParam("type", "All", [
+      "All",
+      ...jobs.map((j) => j.type),
+    ]);
   if (!state) return <Loading />;
   if (path[0] === "applications")
     return (
@@ -232,8 +238,8 @@ export function Hireline({ path }: { path: string[] }) {
     (job) =>
       (path[0] !== "saved" || state.savedJobs.includes(job.id)) &&
       `${job.title} ${job.company} ${job.location}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()) &&
       (team === "All" || job.team === team) &&
       (!remote || job.location === "Remote") &&
       (type === "All" || job.type === type),

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { clearListParams, useListSearch } from "../../shared/list-params";
 import {
   createContext,
   cloneElement,
@@ -40,12 +41,16 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const locked = useRef(false);
+  const pending = useRef<{ key: string; id: string } | null>(null);
   async function act(input: Record<string, unknown>, message = "") {
     if (locked.current) return null;
     locked.current = true;
     setBusy(true);
     setError("");
     setNotice("");
+    const key = JSON.stringify(input);
+    if (pending.current?.key !== key)
+      pending.current = { key, id: crypto.randomUUID() };
     try {
       const response = await fetch("/demo/sites/api", {
         method: "POST",
@@ -54,11 +59,16 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           ...input,
           ...(input.action === "bootstrap"
             ? {}
-            : { requestId: crypto.randomUUID() }),
+            : { requestId: pending.current.id }),
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Please try again.");
+      if (!response.ok) {
+        if (response.status < 500 && response.status !== 429)
+          pending.current = null;
+        throw new Error(result.error || "Please try again.");
+      }
+      pending.current = null;
       setState(result.state);
       setNotice(message);
       return result as Result;
@@ -103,11 +113,19 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   );
 }
 export function Feedback() {
-  const { error, notice } = useDemo();
+  const { error, notice, state, act, busy } = useDemo();
   return (
     <>
       <div role="alert" className={error ? s.error : s.hidden}>
         {error}
+        {!state && error && (
+          <button
+            disabled={busy}
+            onClick={() => void act({ action: "bootstrap" })}
+          >
+            Retry loading
+          </button>
+        )}
       </div>
       <div role="status" className={notice ? s.notice : s.hidden}>
         {notice}
@@ -211,7 +229,7 @@ export function Shell({
           <br />
           No real payments, bookings, hiring, or messages to staff.
         </p>
-        <Link href="/demo/sites">Explore all 7 websites ↗</Link>
+        <Link href="/demo/sites">Explore all 8 websites ↗</Link>
       </footer>
     </div>
   );
@@ -376,6 +394,7 @@ export function Search({
   setFilter: (value: string) => void;
   filterLabel?: string;
 }) {
+  const search = useListSearch();
   return (
     <div className={s.filters}>
       <Field label="Search">
@@ -393,12 +412,11 @@ export function Search({
           ))}
         </select>
       </Field>
-      {(query || filter !== "All") && (
+      {(query || filter !== "All" || search) && (
         <button
           className={s.textButton}
           onClick={() => {
-            setQuery("");
-            setFilter("All");
+            clearListParams();
           }}
         >
           Clear filters

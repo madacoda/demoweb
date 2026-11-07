@@ -1,7 +1,13 @@
 import { Pool, type PoolClient } from "pg";
+import { AsyncLocalStorage } from "node:async_hooks";
 const shared = globalThis as typeof globalThis & {
   districtPools?: Map<string, Pool>;
+  districtNamespace?: AsyncLocalStorage<string>;
 };
+const scope = (shared.districtNamespace ||= new AsyncLocalStorage<string>());
+export function inNamespace<T>(name: string, work: () => T): T {
+  return scope.run(name, work);
+}
 export function getPool() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString)
@@ -28,7 +34,7 @@ export function getPool() {
   return pool;
 }
 export function namespace() {
-  return process.env.DEMO_NAMESPACE || "default";
+  return scope.getStore() || process.env.DEMO_NAMESPACE || "default";
 }
 export async function closePools() {
   await Promise.all(
@@ -51,6 +57,24 @@ export async function migrate() {
         PRIMARY KEY (namespace, kind, id)
       );
       INSERT INTO schema_migrations(version) VALUES (1) ON CONFLICT DO NOTHING;`);
+    await client.query(`CREATE TABLE IF NOT EXISTS lab_sessions (
+      id text PRIMARY KEY,
+      base_namespace text NOT NULL,
+      scenario text NOT NULL,
+      remaining integer NOT NULL DEFAULT 1 CHECK (remaining >= 0),
+      created_at timestamptz NOT NULL DEFAULT now(),
+      expires_at timestamptz NOT NULL DEFAULT now() + interval '24 hours'
+    );
+    CREATE INDEX IF NOT EXISTS lab_sessions_scope ON lab_sessions(base_namespace);
+    INSERT INTO schema_migrations(version) VALUES (2) ON CONFLICT DO NOTHING;`);
+    const third = await client.query(
+      "SELECT 1 FROM schema_migrations WHERE version=3",
+    );
+    if (!third.rowCount) {
+      await client.query(`ALTER TABLE demo_state DROP CONSTRAINT demo_state_kind_check;
+        ALTER TABLE demo_state ADD CONSTRAINT demo_state_kind_check CHECK (kind IN ('storefront','workspace','hris'));
+        INSERT INTO schema_migrations(version) VALUES (3);`);
+    }
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
@@ -66,7 +90,7 @@ export class CommitAndThrow extends Error {
 }
 async function save<T>(
   client: PoolClient,
-  kind: "storefront" | "workspace",
+  kind: "storefront" | "workspace" | "hris",
   id: string,
   state: T,
 ) {
@@ -76,7 +100,7 @@ async function save<T>(
   );
 }
 export async function withState<T, R>(
-  kind: "storefront" | "workspace",
+  kind: "storefront" | "workspace" | "hris",
   id: string,
   initial: () => T,
   operation: (state: T) => R | Promise<R>,

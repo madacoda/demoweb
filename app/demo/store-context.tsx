@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { catalog, type StoreState } from "./_lib/catalog";
@@ -51,6 +52,7 @@ export function StoreProvider({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const locked = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
     fetch("/demo/api", {
@@ -85,6 +87,8 @@ export function StoreProvider({
   }, [notice]);
   const act = useCallback(
     async (input: Record<string, unknown>, message?: string) => {
+      if (locked.current) return null;
+      locked.current = true;
       setBusy(true);
       setError("");
       setNotice("");
@@ -108,11 +112,35 @@ export function StoreProvider({
         );
         return null;
       } finally {
+        locked.current = false;
         setBusy(false);
       }
     },
     [],
   );
+  useEffect(() => {
+    const refresh = async () => {
+      if (locked.current || document.visibilityState === "hidden" || error)
+        return;
+      try {
+        const response = await fetch("/demo/api", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "state" }),
+        });
+        if (response.ok && !locked.current)
+          setState((await response.json()).state);
+      } catch {
+        /* The next explicit operation reports connectivity errors. */
+      }
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+    };
+  }, [error]);
   return (
     <StoreContext.Provider
       value={{

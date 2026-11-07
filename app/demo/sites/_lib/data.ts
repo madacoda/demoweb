@@ -611,6 +611,7 @@ export const jobs = [
 
 export type Task = {
   id: string;
+  version?: number;
   title: string;
   description: string;
   status: "To do" | "In progress" | "Done";

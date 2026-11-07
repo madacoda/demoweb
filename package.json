@@ -21,9 +21,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --env-file=.env --import tsx --test app/demo/_lib/store.test.ts app/demo/sites/_lib/workspace.test.ts tests/postgres.test.ts",
+    "test": "node --env-file=.env --import tsx --test app/demo/_lib/store.test.ts app/demo/sites/_lib/workspace.test.ts tests/*.test.ts",
     "test:browser": "playwright test",
-    "browsers:install": "playwright install chromium"
+    "browsers:install": "playwright install chromium",
+    "db:prune-lab": "node --env-file=.env --import tsx scripts/prune-lab.ts"
   },
   "dependencies": {
     "next": "16.4.5",

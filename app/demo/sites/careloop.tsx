@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useListParam } from "../../shared/list-params";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { prettyDate, priorities, ticketCategories } from "./_lib/data";
@@ -45,8 +46,12 @@ const articles = [
 export function Careloop({ path }: { path: string[] }) {
   const { state, act } = useDemo(),
     router = useRouter();
-  const [query, setQuery] = useState(""),
-    [status, setStatus] = useState("All"),
+  const [query, setQuery] = useListParam("q"),
+    [status, setStatus] = useListParam("status", "All", [
+      "All",
+      "Open",
+      "Resolved",
+    ]),
     [reply, setReply] = useState("");
   if (!state) return <Loading />;
   if (path[0] === "help")
@@ -267,8 +272,8 @@ export function Careloop({ path }: { path: string[] }) {
   const filtered = state.tickets.filter(
     (ticket) =>
       `${ticket.subject} ${ticket.id} ${ticket.category}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()) &&
       (status === "All" || ticket.status === status),
   );
   return (

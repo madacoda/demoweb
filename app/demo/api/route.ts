@@ -1,74 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { performStoreAction, StoreError } from "../_lib/store";
-
+import { performStoreAction } from "../_lib/store";
+import { getLab, labCookie, runWithLab } from "../../../server/lab";
+import { readBody, cookieOptions, errorResponse } from "../../../server/http";
 export const runtime = "nodejs";
-const cookie = "form_field_session";
-
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  const requestOrigin = new URL(request.url);
-  requestOrigin.host = request.headers.get("host") || requestOrigin.host;
-  if (
-    (origin && origin !== requestOrigin.origin) ||
-    request.headers.get("sec-fetch-site") === "cross-site"
-  )
-    return NextResponse.json(
-      { error: "This request must come from the store." },
-      { status: 403 },
-    );
   try {
-    const reader = request.body?.getReader();
-    if (!reader) throw new StoreError("A request body is required.");
-    const parts: Uint8Array[] = [];
-    let size = 0;
-    while (true) {
-      const part = await reader.read();
-      if (part.done) break;
-      size += part.value.byteLength;
-      if (size > 16384) {
-        await reader.cancel();
-        throw new StoreError("That request is too large.", 413);
-      }
-      parts.push(part.value);
-    }
-    let input: unknown;
-    try {
-      input = JSON.parse(Buffer.concat(parts).toString("utf8"));
-    } catch {
-      throw new StoreError("Please send valid JSON.");
-    }
-    const result = await performStoreAction(
-      request.cookies.get(cookie)?.value,
-      input,
+    const input = await readBody(request);
+    const lab = await getLab(request.cookies.get(labCookie)?.value);
+    const cookie = lab ? "lab_form_field_session" : "form_field_session";
+    const { result, lost } = await runWithLab(lab, "store", input, () =>
+      performStoreAction(request.cookies.get(cookie)?.value, input),
     );
     const response = NextResponse.json(
-      {
-        state: result.state,
-        orderId: result.orderId,
-        ticketId: result.ticketId,
-      },
-      { headers: { "Cache-Control": "no-store" } },
+      lost
+        ? {
+            error:
+              "The response was interrupted. Please retry your unchanged submission.",
+          }
+        : {
+            state: result.state,
+            orderId: result.orderId,
+            ticketId: result.ticketId,
+          },
+      { status: lost ? 503 : 200, headers: { "Cache-Control": "no-store" } },
     );
-    response.cookies.set(cookie, result.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: request.nextUrl.protocol === "https:",
-      path: "/demo",
-      maxAge: 30 * 86400,
-    });
+    response.cookies.set(cookie, result.token, cookieOptions(request, "/demo"));
     return response;
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof StoreError
-            ? error.message
-            : "We couldn’t save your changes. Please try again.",
-      },
-      {
-        status: error instanceof StoreError ? error.status : 500,
-        headers: { "Cache-Control": "no-store" },
-      },
-    );
+    return errorResponse(error);
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useListNumber, useListParam } from "../../shared/list-params";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { dateAfter, money, prettyDate, rooms } from "./_lib/data";
@@ -22,10 +23,17 @@ import s from "./sites.module.css";
 export function Haven({ path }: { path: string[] }) {
   const { state, act } = useDemo(),
     router = useRouter();
-  const [query, setQuery] = useState(""),
-    [location, setLocation] = useState("All"),
-    [sort, setSort] = useState("recommended"),
-    [guests, setGuests] = useState(1);
+  const [query, setQuery] = useListParam("q"),
+    [location, setLocation] = useListParam("destination", "All", [
+      "All",
+      ...rooms.map((r) => r.location),
+    ]),
+    [sort, setSort] = useListParam("sort", "recommended", [
+      "recommended",
+      "low",
+      "high",
+    ]),
+    [guests, setGuests] = useListNumber("guests", 1, [1, 2, 3, 4, 5, 6]);
   const [start, setStart] = useState(dateAfter(1)),
     [end, setEnd] = useState(dateAfter(3));
   if (!state) return <Loading />;
@@ -233,8 +241,8 @@ export function Haven({ path }: { path: string[] }) {
     .filter(
       (room) =>
         `${room.name} ${room.location} ${room.type}`
-          .toLowerCase()
-          .includes(query.toLowerCase()) &&
+          .toLocaleLowerCase()
+          .includes(query.trim().toLocaleLowerCase()) &&
         (location === "All" || room.location === location) &&
         room.guests >= guests,
     )

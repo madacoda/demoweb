@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useListParam } from "../../shared/list-params";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import {
   assignees,
   dateAfter,
@@ -48,7 +48,12 @@ function TaskCard({ task }: { task: Task }) {
           disabled={busy}
           onChange={(e) =>
             void act(
-              { action: "task-move", id: task.id, status: e.target.value },
+              {
+                action: "task-move",
+                id: task.id,
+                version: task.version || 1,
+                status: e.target.value,
+              },
               "Task moved.",
             )
           }
@@ -64,10 +69,19 @@ function TaskCard({ task }: { task: Task }) {
 export function Daybreak({ path }: { path: string[] }) {
   const { state, act, busy } = useDemo(),
     router = useRouter();
-  const [query, setQuery] = useState(""),
-    [project, setProject] = useState("All"),
-    [assignee, setAssignee] = useState("All"),
-    [priority, setPriority] = useState("All");
+  const [query, setQuery] = useListParam("q"),
+    [project, setProject] = useListParam("project", "All", [
+      "All",
+      ...projects,
+    ]),
+    [assignee, setAssignee] = useListParam("assignee", "All", [
+      "All",
+      ...assignees,
+    ]),
+    [priority, setPriority] = useListParam("priority", "All", [
+      "All",
+      ...priorities,
+    ]);
   if (!state) return <Loading />;
   if (path[0] === "new" || path[0] === "tasks") {
     const task =
@@ -99,7 +113,7 @@ export function Daybreak({ path }: { path: string[] }) {
               const result = await act({
                 ...data,
                 action: "task-save",
-                ...(task ? { id: task.id } : {}),
+                ...(task ? { id: task.id, version: task.version || 1 } : {}),
               });
               if (result) router.push("/demo/sites/daybreak");
             }}
@@ -181,6 +195,7 @@ export function Daybreak({ path }: { path: string[] }) {
                       const result = await act({
                         action: "task-delete",
                         id: task.id,
+                        version: task.version || 1,
                       });
                       if (result) router.push("/demo/sites/daybreak");
                     }
@@ -198,8 +213,8 @@ export function Daybreak({ path }: { path: string[] }) {
   const filtered = state.tasks.filter(
     (t) =>
       `${t.title} ${t.description}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()) &&
       (project === "All" || t.project === project) &&
       (assignee === "All" || t.assignee === assignee) &&
       (priority === "All" || t.priority === priority),

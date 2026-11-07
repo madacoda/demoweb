@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useListFlag, useListParam } from "../../shared/list-params";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { dishes, money, prettyDate } from "./_lib/data";
 import {
   Action,
@@ -21,9 +21,12 @@ import s from "./sites.module.css";
 export function Thyme({ path }: { path: string[] }) {
   const { state, act, busy } = useDemo(),
     router = useRouter();
-  const [query, setQuery] = useState(""),
-    [category, setCategory] = useState("All"),
-    [vegan, setVegan] = useState(false);
+  const [query, setQuery] = useListParam("q"),
+    [category, setCategory] = useListParam("category", "All", [
+      "All",
+      ...dishes.map((d) => d.category),
+    ]),
+    [vegan, setVegan] = useListFlag("vegan");
   if (!state) return <Loading />;
   if (path[0] === "orders")
     return (
@@ -278,8 +281,8 @@ export function Thyme({ path }: { path: string[] }) {
   const filtered = dishes.filter(
     (d) =>
       `${d.name} ${d.description}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()) &&
       (category === "All" || d.category === category) &&
       (!vegan || d.dietary === "Vegan"),
   );
