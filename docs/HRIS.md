@@ -6,7 +6,7 @@ Start `/lab` → **Employee → manager → HR** for a fresh isolated company. A
 
 ## Public sample accounts
 
-All sample accounts use `Leave123!`. These credentials are synthetic and only belong to the sample company.
+All sample accounts use `Leave123!`. These credentials are synthetic and only belong to the sample company. They are also displayed directly on the [HRIS sign-in page](https://demoweb.madacoda.dev/hris/login), with a link to the isolated sign-in test.
 
 | Email              | Role             | Scope                                             |
 | ------------------ | ---------------- | ------------------------------------------------- |
@@ -18,6 +18,8 @@ All sample accounts use `Leave123!`. These credentials are synthetic and only be
 | harper@people.test | HR administrator | All employee requests, balances, and activity     |
 
 Passwords are salted scrypt hashes in PostgreSQL. Session tokens are random, stored hashed, rotated on login/logout, and expire after 30 minutes. Five failed logins cause a 15-minute lockout. A logged-out or expired session cannot retrieve private data or submit a mutation.
+
+For positive and negative authentication checks, start `/lab` → **HRIS sign-in: correct and incorrect password**. Enter a wrong password of at least eight characters for Alex, confirm the error, then use `Leave123!` to sign in. Sign out and try Maya and Harper for the manager and HR views. Each start creates a separate company, so a lockout does not affect the shared normal sample.
 
 ## Permission matrix
 
@@ -68,7 +70,7 @@ These are explicit sample policies, not employment-law rules. Holidays, regional
 
 ## Edge-case presets
 
-The lab provides eight HRIS presets: complete journey, rejection, permissions, exhausted balance, competing decisions, filters/pagination, a committed request with interrupted response, and session expiry during submission. The downloaded catalog contains 20 HRIS-specific acceptance plans, plus cross-site authentication, HTTP, validation, filtering and recovery cases.
+The lab provides nine HRIS presets: sign-in, complete journey, rejection, permissions, exhausted balance, competing decisions, filters/pagination, a committed request with interrupted response, and session expiry during submission. The downloaded catalog contains 20 HRIS-specific acceptance plans, plus cross-site authentication, HTTP, validation, filtering and recovery cases.
 
 `/hris/api` accepts JSON POST actions `bootstrap`, `login`, `logout`, `submit`, `decide`, `cancel`, and `adjust-balance`. Business mutations require a 16–80 character alphanumeric/hyphen `requestId`. Decisions, cancellations and balance adjustments require the current `version`. API bodies are limited to 16 KiB and cross-site browser requests are rejected.
 

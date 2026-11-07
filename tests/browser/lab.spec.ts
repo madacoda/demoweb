@@ -1,7 +1,7 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
-import { nextWorkday, hrPassword } from "../../app/hris/model";
+import { nextWorkday, hrAccounts, hrPassword } from "../../app/hris/model";
 const origin = "http://127.0.0.1:1112";
 async function start(page: Page, scenario: string) {
   const response = await page.request.post(`${origin}/lab/api`, {
@@ -234,6 +234,47 @@ test("store checkout recovers an already committed order after a lost response",
   ).toBe(23);
 });
 
+test("HRIS sample credentials support positive and negative sign-in across roles", async ({
+  page,
+}) => {
+  await page.goto(`${origin}/hris/login`);
+  await expect(
+    page.getByRole("heading", { name: "Public test accounts" }),
+  ).toBeVisible();
+  await expect(page.getByText(hrPassword, { exact: true })).toBeVisible();
+  for (const account of hrAccounts)
+    await expect(page.getByText(account.email, { exact: true })).toBeVisible();
+  await page
+    .getByRole("link", { name: "Start an isolated sign-in test" })
+    .click();
+  await expect(page).toHaveURL(/\/lab#hris-auth$/);
+  await page
+    .locator("#hris-auth")
+    .getByRole("button", { name: "Start fresh scenario" })
+    .click();
+  await expect(page).toHaveURL(/\/hris\/login$/);
+  await page
+    .getByLabel("Email address", { exact: true })
+    .fill("alex@people.test");
+  await page.getByLabel("Password", { exact: true }).fill("Wrong123!");
+  await page.getByRole("button", { name: "Sign in →", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Email or password is incorrect",
+  );
+  await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+  await page.getByLabel("Password", { exact: true }).fill(hrPassword);
+  await page.getByRole("button", { name: "Sign in →", exact: true }).click();
+  await expect(page).toHaveURL(/\/hris\/requests$/);
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/hris\/login$/);
+  await signIn(page, "maya");
+  await expect(page).toHaveURL(/\/hris\/approvals$/);
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/hris\/login$/);
+  await signIn(page, "harper");
+  await expect(page).toHaveURL(/\/hris\/balances$/);
+});
+
 test("HRIS employee submit → manager approval → HR balance and audit, all through UI", async ({
   page,
 }) => {
@@ -250,6 +291,7 @@ test("HRIS employee submit → manager approval → HR balance and audit, all th
   const id = page.url().split("/").at(-1)!;
   await expect(page.getByText("Pending", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/hris\/login$/);
   await signIn(page, "maya");
   await page.getByRole("link").filter({ hasText: id }).click();
   await page
@@ -261,6 +303,7 @@ test("HRIS employee submit → manager approval → HR balance and audit, all th
     0,
   );
   await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/hris\/login$/);
   await signIn(page, "harper");
   const row = page.getByTestId("balance-alex-Annual");
   await expect(row.locator("td")).toHaveText(["Annual", "12", "1", "1", "10"]);

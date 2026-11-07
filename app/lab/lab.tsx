@@ -192,6 +192,7 @@ export function Lab() {
             <article
               className={s.card}
               key={scenario.id}
+              id={scenario.id}
               data-testid={`scenario-${scenario.id}`}
             >
               <p className={s.eyebrow}>

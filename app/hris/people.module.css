@@ -586,6 +586,34 @@
   text-decoration: underline;
   color: #315ac3;
 }
+.testAccounts {
+  border-top: 1px solid #e0e5ed;
+  padding-top: 20px;
+  font-size: 13px;
+}
+.testAccounts h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.testAccounts p {
+  color: #5b687c;
+}
+.testAccounts ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.testAccounts li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid #eef0f4;
+}
+.testAccounts code {
+  overflow-wrap: anywhere;
+}
 .skip {
   position: absolute;
   top: -60px;

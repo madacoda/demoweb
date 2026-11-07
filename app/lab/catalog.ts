@@ -20,6 +20,20 @@ export const demoAccount = {
 };
 export const scenarios: Scenario[] = [
   {
+    id: "hris-auth",
+    title: "HRIS sign-in: correct and incorrect password",
+    area: "HRIS",
+    path: "/hris/login",
+    setup: "A fresh company with six public sample accounts. Signed out.",
+    steps: [
+      "Use alex@people.test with an incorrect password of at least eight characters; expect an error and no session.",
+      "Sign in with the displayed sample password; expect Alex's requests.",
+      "Sign out, then sign in as Maya and Harper to verify their separate manager and HR views.",
+    ],
+    expected:
+      "Invalid credentials cannot open a workspace. Correct credentials open the matching role only. A fresh run resets failed-login counters without changing the normal company.",
+  },
+  {
     id: "hris-journey",
     title: "Employee → manager → HR",
     area: "HRIS",

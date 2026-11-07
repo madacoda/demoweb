@@ -199,7 +199,7 @@ export async function startLab(scenarioId: string) {
             });
           hr = await performHRAction(hr.token, { action: "logout" });
         }
-        if (scenario.id !== "hris-journey") {
+        if (!["hris-auth", "hris-journey"].includes(scenario.id)) {
           const account = ["hris-reject", "hris-conflict"].includes(scenario.id)
             ? "maya"
             : scenario.id === "hris-filters"

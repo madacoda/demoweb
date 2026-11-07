@@ -39,7 +39,7 @@ This is a local evaluation environment: payments, physical reservations, fulfill
 
 ## Test lab and realistic UAT
 
-Open **[the test lab](http://127.0.0.1:1112/lab)** for **28 repeatable presets** and **85 acceptance workflows**. Download the JSON catalog from `/lab/cases`. It is an acceptance-plan catalog, not a Veriflow schema import, and does not claim exhaustive coverage of every possible edge case.
+Open **[the test lab](http://127.0.0.1:1112/lab)** for **29 repeatable presets** and **85 acceptance workflows**. Download the JSON catalog from `/lab/cases`. It is an acceptance-plan catalog, not a Veriflow schema import, and does not claim exhaustive coverage of every possible edge case.
 
 Presets include three-role HRIS journeys, login/lockout, guest cart merge, session expiry, combined filters, Unicode/literal markup, empty/full workspaces, stock/capacity boundaries, booking overlaps, stale edits, delayed saves, 429/503 errors, and a successful commit followed by an interrupted response. Correct and deliberately broken coupon controls verify that a runner distinguishes passing and failing assertions.
 

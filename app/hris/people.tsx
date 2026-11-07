@@ -3,7 +3,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { clearListParams, useListParam } from "../shared/list-params";
-import { nextWorkday, today, type HRState, type Leave } from "./model";
+import {
+  hrAccounts,
+  hrPassword,
+  nextWorkday,
+  today,
+  type HRState,
+  type Leave,
+} from "./model";
 import s from "./people.module.css";
 const empty: HRState = {
   user: null,
@@ -356,10 +363,36 @@ export function People({ path }: { path: string[] }) {
                   </button>
                 </fieldset>
               </form>
-              <p className={s.muted}>
-                Exploring this sample company?{" "}
-                <Link href="/lab#hris">View sample accounts</Link>
-              </p>
+              <section
+                className={s.testAccounts}
+                aria-labelledby="hris-test-accounts"
+              >
+                <h3 id="hris-test-accounts">Public test accounts</h3>
+                <p>
+                  All six synthetic accounts use password{" "}
+                  <code>{hrPassword}</code>.
+                </p>
+                <ul>
+                  {hrAccounts.map((person) => (
+                    <li key={person.id}>
+                      <span>
+                        {person.name} ·{" "}
+                        {person.role === "hr" ? "HR admin" : person.role}
+                      </span>
+                      <code>{person.email}</code>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  For a positive test, sign in as Alex, Maya, or Harper to check
+                  each role. For a negative test, start a fresh lab run, try one
+                  incorrect password, then sign in correctly. Five failed
+                  attempts lock that test account for 15 minutes.
+                </p>
+                <Link href="/lab#hris-auth">
+                  Start an isolated sign-in test →
+                </Link>
+              </section>
             </section>
           </div>
         ) : !permitted ? (
