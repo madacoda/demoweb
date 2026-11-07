@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Generate .env.deploy first}
       DEMO_NAMESPACE: ${DEMO_NAMESPACE:-default}
+      DEMOWEB_PUBLIC_ORIGIN: ${DEMOWEB_PUBLIC_ORIGIN:-}
       HOSTNAME: 0.0.0.0
       PORT: "1112"
     ports:
