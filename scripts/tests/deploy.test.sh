@@ -47,7 +47,7 @@ for failure in login pull; do
   export MOCK_FAILURE="$failure"
   if run_deploy "$new_image"; then echo "Expected $failure failure" >&2; exit 1; fi
   [[ "$(cat "$temp_dir/deploy/current-image")" == "$old_image" ]]
-  ! grep -q ' up ' "$temp_dir/calls"
+  if grep -q ' up ' "$temp_dir/calls"; then echo 'Unexpected service update' >&2; exit 1; fi
   assert_no_credentials
 done
 
@@ -63,7 +63,7 @@ rm -- "$temp_dir/deploy/current-image"
 export MOCK_FAILURE=health
 if run_deploy "$new_image"; then exit 1; fi
 grep -q ' stop web' "$temp_dir/calls"
-! grep -q 'down\|--volumes' "$temp_dir/calls"
+if grep -q 'down\|--volumes' "$temp_dir/calls"; then echo 'Unexpected destructive action' >&2; exit 1; fi
 [[ ! -e "$temp_dir/deploy/current-image" ]]
 assert_no_credentials
 
