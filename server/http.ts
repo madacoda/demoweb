@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { LabError } from "./lab";
+function websiteOrigin(request: NextRequest) {
+  const internalUrl = new URL(request.url);
+  const host = request.headers.get("host") || internalUrl.host;
+  const requestUrl = new URL(`${internalUrl.protocol}//${host}`);
+  const configured = process.env.DEMOWEB_PUBLIC_ORIGIN;
+  if (!configured) return requestUrl.origin;
+  const publicUrl = new URL(configured);
+  // The reverse proxy must supply the actual Host; an unrelated Host is never trusted.
+  if (requestUrl.host !== publicUrl.host)
+    throw new LabError("Please send this request from the website.", 403);
+  return publicUrl.origin;
+}
 export function checkOrigin(request: NextRequest) {
-  const url = new URL(request.url);
-  url.host = request.headers.get("host") || url.host;
   if (
     (request.headers.has("origin") &&
-      request.headers.get("origin") !== url.origin) ||
+      request.headers.get("origin") !== websiteOrigin(request)) ||
     request.headers.get("sec-fetch-site") === "cross-site"
   )
     throw new LabError("Please send this request from the website.", 403);
@@ -58,7 +68,7 @@ export function cookieOptions(request: NextRequest, path: string) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: request.nextUrl.protocol === "https:",
+    secure: websiteOrigin(request).startsWith("https://"),
     path,
     maxAge: 30 * 86400,
   };

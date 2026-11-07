@@ -52,11 +52,14 @@ node scripts/setup-production-env.mjs
 
 Transfer the resulting ignored `.env.deploy` to `/opt/demoweb/.env.deploy` through SSH and set mode 600. The generator creates a random database password and matching internal URL, preserves existing files and never prints credentials. Do not use the local development `.env`: it addresses host port 5433 instead of the production `db:5432` service.
 
+For an existing `.env.deploy`, add `DEMOWEB_PUBLIC_ORIGIN=https://demoweb.madacoda.dev` before deploying the new image. Keep it aligned with Nginx's public hostname.
+
 | Setting                                             | Meaning                                                                   |
 | --------------------------------------------------- | ------------------------------------------------------------------------- |
 | `DEMOWEB_IMAGE`                                     | Default image for manual commands; CI overrides it with a verified digest |
 | `DEMOWEB_BIND_ADDRESS`                              | `127.0.0.1`; Nginx is the public entrypoint                               |
 | `DEMOWEB_PORT`                                      | `1112`; container port is also 1112                                       |
+| `DEMOWEB_PUBLIC_ORIGIN`                             | External HTTPS origin for same-origin POST checks and Secure cookies      |
 | `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD` | Database initialization settings                                          |
 | `DATABASE_URL`                                      | Connection string for `db:5432`; password must match PostgreSQL           |
 | `DEMO_NAMESPACE`                                    | Optional application namespace; defaults to `default`                     |
