@@ -36,7 +36,10 @@ compose() {
 }
 # Complete network pulls before replacing a running application.
 compose "$image" pull db
-if compose "$image" up -d --wait --wait-timeout 180 --pull never; then
+if compose "$image" up -d --wait --wait-timeout 180 --pull never && \
+  curl --noproxy '*' --fail --silent --show-error --max-time 15 \
+    --resolve demoweb.madacoda.dev:443:127.0.0.1 \
+    https://demoweb.madacoda.dev/health >/dev/null; then
   image_file=$(mktemp "$root_dir/.image.XXXXXX")
   printf '%s\n' "$image" >"$image_file"
   mv -f -- "$image_file" "$root_dir/current-image"

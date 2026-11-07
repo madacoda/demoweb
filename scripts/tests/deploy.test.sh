@@ -23,6 +23,13 @@ elif [[ " $* " == *' up '* && "${MOCK_FAILURE:-}" == health && "${DEMOWEB_IMAGE:
 fi
 MOCK
 chmod +x "$temp_dir/bin/docker"
+cat > "$temp_dir/bin/curl" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'curl %s\n' "$*" >> "$AUDIT_ROOT/calls"
+[[ "${MOCK_FAILURE:-}" != proxy ]]
+MOCK
+chmod +x "$temp_dir/bin/curl"
 export NEW_IMAGE="$new_image"
 run_deploy() {
   printf '%s\nmadacoda\nexplicit-fake-token\n' "$1" | bash "$repo_root/scripts/deploy-image.sh" "$temp_dir/deploy"
@@ -53,6 +60,13 @@ done
 
 reset_case
 export MOCK_FAILURE=health
+if run_deploy "$new_image"; then exit 1; fi
+grep -q "$old_image .* up " "$temp_dir/calls"
+[[ "$(cat "$temp_dir/deploy/current-image")" == "$old_image" ]]
+assert_no_credentials
+
+reset_case
+export MOCK_FAILURE=proxy
 if run_deploy "$new_image"; then exit 1; fi
 grep -q "$old_image .* up " "$temp_dir/calls"
 [[ "$(cat "$temp_dir/deploy/current-image")" == "$old_image" ]]

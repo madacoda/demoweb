@@ -139,7 +139,3 @@ jobs:
             ssh -T -i "$temp_dir/key" -p "$port" -o BatchMode=yes \
               -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$temp_dir/known_hosts" \
               -o ConnectTimeout=15 "$VPS_USER@$VPS_HOST" deploy-demoweb
-      - name: Verify the public HTTPS endpoint
-        run: |
-          curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 3 --max-time 15 https://demoweb.madacoda.dev/health

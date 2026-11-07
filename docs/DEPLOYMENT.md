@@ -10,7 +10,7 @@ Production URL: **https://demoweb.madacoda.dev**. The application uses **1112** 
 2. CI builds a Linux amd64 image with Node.js 24 and Bun 1.4.4. The standalone Next.js runtime runs as the non-root `node` user.
 3. Container checks verify database migrations, pages/static assets, persisted cart/session data after application and database restart, and HTTP 503 when PostgreSQL is unavailable. Deployment control tests use **explicit fake Docker responses** to verify rejection, credential cleanup and rollback.
 4. Successful main runs publish the exact tested image to GHCR with `sha-<full-commit>` and `latest` tags. The workflow passes its immutable `ghcr.io/madacoda/demoweb@sha256:...` digest to deployment.
-5. The deployment job checks that its commit is still main, then uses a restricted SSH key to deploy that digest. It waits for container health and verifies the public HTTPS health endpoint.
+5. The deployment job checks that its commit is still main, then uses a restricted SSH key to deploy that digest. It waits for container health and verifies the HTTPS endpoint through Nginx on the VPS origin. External checks can be blocked by Cloudflare rules for CI runner IPs.
 
 Publication uses `GITHUB_TOKEN` with `packages: write`. Deployment uses its own short-lived job token with `packages: read`. The token travels over SSH stdin and is stored in a temporary mode-700 Docker configuration directory, removed on exit. A permanent registry token is unnecessary for this pipeline. The package must grant this repository Actions access; its visibility can remain private.
 
