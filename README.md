@@ -2,6 +2,8 @@
 
 Eight functional sample websites in an independent repository. Next.js + React + Bun, with **PostgreSQL 18 running in Docker** for all persistent data. There is no JSON-file, SQLite, or in-memory persistence fallback.
 
+This checkout is maintained at [madacoda/demoweb](https://github.com/madacoda/demoweb), imported from [monsieurafa/demo-district](https://github.com/monsieurafa/demo-district) at `ebf13ee`. The source remains the Git `upstream` remote; pushes go to `origin` (`madacoda/demoweb`). Production images are published to **`ghcr.io/madacoda/demoweb`** after verification. See [GHCR and production deployment](docs/DEPLOYMENT.md).
+
 ## Start locally
 
 Requirements: Bun 1.4.4+, Node.js 24+, Docker Engine with Docker Compose. Docker Desktop or Colima can provide Docker on macOS. Start Docker Desktop or run `colima start` before the setup command.
@@ -12,7 +14,7 @@ bun run setup
 bun run dev
 ```
 
-Open [the directory](http://127.0.0.1:3001). The app uses **port 3001**, leaving port 3000 available for Veriflow. PostgreSQL is bound to **127.0.0.1:5433**, with data in the Docker named volume `demo-district_postgres_data`.
+Open [the directory](http://127.0.0.1:3001). The app uses **port 3001**, independently of Veriflow's configured port (1111 in the current deployment). PostgreSQL is bound to **127.0.0.1:5433**, with data in the Docker named volume `demo-district_postgres_data`.
 
 `setup` generates an ignored `.env` with a random local database password, starts the database, waits for its health check, and applies the versioned schema. An existing `.env` is kept unchanged. `.env.example` documents the configuration; never commit your real `.env`.
 
@@ -82,7 +84,7 @@ Tests cover full journeys, mobile accessibility, persistence across processes, r
 
 ## Veriflow integration
 
-Run Veriflow from its own repository on port 3000 and use this app's port 3001 URLs as external targets. There are no imports from or package dependencies on Veriflow.
+Run Veriflow from its own repository on its configured port and use this app's port 3001 URLs as external targets. There are no imports from or package dependencies on Veriflow.
 
 The existing coupon target contract is preserved:
 
@@ -105,4 +107,4 @@ Import is atomic and refuses to overwrite destination records. It preserves pass
 
 ## Acceptance and evidence
 
-Task: keep all test websites outside Veriflow in private `monsieurafa/demo-district`, use Docker PostgreSQL, and provide realistic UAT targets including role-based HRIS workflows, filtering and reproducible failure cases. Current verification results are in `VERIFICATION.md`.
+The imported project keeps all test websites outside Veriflow, uses Docker PostgreSQL, and provides realistic UAT targets including role-based HRIS workflows, filtering and reproducible failure cases. `VERIFICATION.md` preserves upstream verification history. This checkout's current checks and image publication are recorded in [GitHub Actions](https://github.com/madacoda/demoweb/actions).
