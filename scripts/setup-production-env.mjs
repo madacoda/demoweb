@@ -8,7 +8,7 @@ try {
     [
       "DEMOWEB_IMAGE=ghcr.io/madacoda/demoweb:latest",
       "DEMOWEB_BIND_ADDRESS=127.0.0.1",
-      "DEMOWEB_PORT=3001",
+      "DEMOWEB_PORT=1112",
       "POSTGRES_USER=demo_district",
       "POSTGRES_DB=demo_district",
       `POSTGRES_PASSWORD=${password}`,

@@ -8,9 +8,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1 --port 3001",
+    "dev": "next dev --hostname 127.0.0.1 --port 1112",
     "build": "next build",
-    "start": "next start --hostname 127.0.0.1 --port 3001",
+    "start": "next start --hostname 127.0.0.1 --port 1112",
     "setup": "node scripts/setup-env.mjs && docker compose up -d --wait db && bun run db:migrate",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",

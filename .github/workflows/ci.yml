@@ -7,7 +7,7 @@ permissions:
   contents: read
 concurrency:
   group: demoweb-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -45,6 +45,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -73,6 +75,8 @@ jobs:
           IMAGE: ${{ steps.image.outputs.image }}
         run: |
           shellcheck scripts/container-entrypoint.sh scripts/container-smoke.sh
+          shellcheck scripts/deploy-image.sh scripts/tests/deploy.test.sh deploy/nginx/renew-hook.sh
+          bash scripts/tests/deploy.test.sh
           bash scripts/container-smoke.sh "$IMAGE"
       - name: Authenticate to GHCR
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -82,6 +86,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish the exact tested image
+        id: publish
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           IMAGE: ${{ steps.image.outputs.image }}
@@ -91,4 +96,50 @@ jobs:
           docker push "$IMAGE"
           docker push "$latest"
           digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE")
+          echo "image=$digest" >> "$GITHUB_OUTPUT"
           printf 'Published `%s`\n\nImmutable release: `%s`\n' "$IMAGE" "$digest" >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    needs: container
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VPS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Deploy the verified image through the restricted SSH key
+        env:
+          IMAGE: ${{ needs.container.outputs.image }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          REGISTRY_USER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$current" != "$GITHUB_SHA" ]; then
+            echo 'Skipping a superseded main commit.'
+            exit 0
+          fi
+          [[ "$IMAGE" =~ ^ghcr\.io/madacoda/demoweb@sha256:[a-f0-9]{64}$ ]]
+          [[ "$VPS_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          [[ "$VPS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          port=${VPS_PORT:-22}
+          [[ "$port" =~ ^[0-9]{1,5}$ ]] && (( 10#$port >= 1 && 10#$port <= 65535 ))
+          umask 077
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf -- "$temp_dir"' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" > "$temp_dir/key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$temp_dir/known_hosts"
+          printf '%s\n%s\n%s\n' "$IMAGE" "$REGISTRY_USER" "$GH_TOKEN" | \
+            ssh -T -i "$temp_dir/key" -p "$port" -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$temp_dir/known_hosts" \
+              -o ConnectTimeout=15 "$VPS_USER@$VPS_HOST" deploy-demoweb
+      - name: Verify the public HTTPS endpoint
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 3 --max-time 15 https://demoweb.madacoda.dev/health
