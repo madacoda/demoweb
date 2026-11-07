@@ -14,7 +14,7 @@ bun run setup
 bun run dev
 ```
 
-Open [the directory](http://127.0.0.1:3001). The app uses **port 3001**, independently of Veriflow's configured port (1111 in the current deployment). PostgreSQL is bound to **127.0.0.1:5433**, with data in the Docker named volume `demo-district_postgres_data`.
+Open [the directory](http://127.0.0.1:1112). The app uses **port 1112**, independently of Veriflow's configured port (1111 in the current deployment). PostgreSQL is bound to **127.0.0.1:5433**, with data in the Docker named volume `demo-district_postgres_data`.
 
 `setup` generates an ignored `.env` with a random local database password, starts the database, waits for its health check, and applies the versioned schema. An existing `.env` is kept unchanged. `.env.example` documents the configuration; never commit your real `.env`.
 
@@ -39,7 +39,7 @@ This is a local evaluation environment: payments, physical reservations, fulfill
 
 ## Test lab and realistic UAT
 
-Open **[the test lab](http://127.0.0.1:3001/lab)** for **28 repeatable presets** and **85 acceptance workflows**. Download the JSON catalog from `/lab/cases`. It is an acceptance-plan catalog, not a Veriflow schema import, and does not claim exhaustive coverage of every possible edge case.
+Open **[the test lab](http://127.0.0.1:1112/lab)** for **28 repeatable presets** and **85 acceptance workflows**. Download the JSON catalog from `/lab/cases`. It is an acceptance-plan catalog, not a Veriflow schema import, and does not claim exhaustive coverage of every possible edge case.
 
 Presets include three-role HRIS journeys, login/lockout, guest cart merge, session expiry, combined filters, Unicode/literal markup, empty/full workspaces, stock/capacity boundaries, booking overlaps, stale edits, delayed saves, 429/503 errors, and a successful commit followed by an interrupted response. Correct and deliberately broken coupon controls verify that a runner distinguishes passing and failing assertions.
 
@@ -78,18 +78,18 @@ bun run browsers:install
 bun run test:browser
 ```
 
-Use `bun run test`, which invokes Node's test runner against real PostgreSQL. Backend tests create temporary database namespaces and delete only those records. Browser tests start the production app on port 3001 using an `e2e-` namespace; stop your local app first. Normal records in the default namespace are untouched. No fake database or browser adapters are used.
+Use `bun run test`, which invokes Node's test runner against real PostgreSQL. Backend tests create temporary database namespaces and delete only those records. Browser tests start the production app on port 1112 using an `e2e-` namespace; stop your local app first. Normal records in the default namespace are untouched. No fake database or browser adapters are used.
 
 Tests cover full journeys, mobile accessibility, persistence across processes, request isolation, invalid actions, atomic inventory/ticket capacity, checkout replay, and cancellation. Cross-process tests send competing mutations from separate Node processes.
 
 ## Veriflow integration
 
-Run Veriflow from its own repository on its configured port and use this app's port 3001 URLs as external targets. There are no imports from or package dependencies on Veriflow.
+Run Veriflow from its own repository on its configured port and use this app's port 1112 URLs as external targets. There are no imports from or package dependencies on Veriflow.
 
 The existing coupon target contract is preserved:
 
-- Fixed: `http://127.0.0.1:3001/demo?bug=0`
-- Deliberately broken: `http://127.0.0.1:3001/demo?bug=1`
+- Fixed: `http://127.0.0.1:1112/demo?bug=0`
+- Deliberately broken: `http://127.0.0.1:1112/demo?bug=1`
 - Fill `coupon-input` with `SAVE10`, click `apply-coupon`, and assert exact `order-total` text `90000`.
 - Initial total: `100000`; broken mode deliberately retains it. Fixture baskets remain separate from normal shopping baskets.
 

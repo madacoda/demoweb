@@ -11,7 +11,7 @@ export default defineConfig({
   globalTeardown: "./tests/browser/global-teardown.ts",
   webServer: {
     command: "bun run start",
-    url: "http://127.0.0.1:3001/health",
+    url: "http://127.0.0.1:1112/health",
     reuseExistingServer: false,
     timeout: 60000,
   },

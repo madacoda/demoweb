@@ -1,61 +1,117 @@
 # GHCR and production deployment
 
-The source checkout is `C:\www\demoweb`. `origin` is `https://github.com/madacoda/demoweb.git`; `upstream` is `https://github.com/monsieurafa/demo-district.git`. Upstream history is preserved. This deployment is independent of Veriflow.
+The local checkout is `C:\www\demoweb`. `origin` is [madacoda/demoweb](https://github.com/madacoda/demoweb); `upstream` preserves [monsieurafa/demo-district](https://github.com/monsieurafa/demo-district) history.
+
+Production URL: **https://demoweb.madacoda.dev**. The application uses **1112** locally, inside the container, and on the VPS loopback interface.
 
 ## Release pipeline
 
-The workflow first installs the frozen Bun lockfile and runs lint, formatting, types, real PostgreSQL tests, the production build and Chromium browser tests. Its container job builds a Linux amd64 image with Node.js 24 and Bun 1.4.4. The runtime contains Next.js standalone output, static assets, a bundled migration entrypoint and production dependencies, and runs as the non-root `node` user.
+1. A pull request runs the frozen Bun install, lint, formatting, types, real PostgreSQL tests, production build and Chromium browser tests.
+2. CI builds a Linux amd64 image with Node.js 24 and Bun 1.4.4. The standalone Next.js runtime runs as the non-root `node` user.
+3. Container checks verify database migrations, pages/static assets, persisted cart/session data after application and database restart, and HTTP 503 when PostgreSQL is unavailable. Deployment control tests use **explicit fake Docker responses** to verify rejection, credential cleanup and rollback.
+4. Successful main runs publish the exact tested image to GHCR with `sha-<full-commit>` and `latest` tags. The workflow passes its immutable `ghcr.io/madacoda/demoweb@sha256:...` digest to deployment.
+5. The deployment job checks that its commit is still main, then uses a restricted SSH key to deploy that digest. It waits for container health and verifies the public HTTPS health endpoint.
 
-Before publication, a disposable Compose project checks real database migrations, non-root execution, pages/static assets, the acceptance catalog, persisted cart/session data across application/database restart, and a 503 readiness response when PostgreSQL is unavailable. The CI cleanup deletes only this disposable project's volume. Production data is separate.
+Publication uses `GITHUB_TOKEN` with `packages: write`. Deployment uses its own short-lived job token with `packages: read`. The token travels over SSH stdin and is stored in a temporary mode-700 Docker configuration directory, removed on exit. A permanent registry token is unnecessary for this pipeline. The package must grant this repository Actions access; its visibility can remain private.
 
-Successful main runs publish the exact tested image:
+## GitHub configuration
 
-- `ghcr.io/madacoda/demoweb:sha-<full-commit>` for a source revision.
-- `ghcr.io/madacoda/demoweb:latest` for the latest successful release.
-- The workflow summary records its immutable `ghcr.io/madacoda/demoweb@sha256:...` reference. Prefer that digest for deployments and rollbacks.
+Create the `production` environment in **Settings → Environments** and set these environment secrets:
 
-Pull requests run checks and container verification without publishing. Publication uses the workflow's `GITHUB_TOKEN` with `packages: write`; no registry password or custom GitHub secret is needed. The package is linked to the destination repository through its OCI source label. A pre-existing package must grant this repository Actions access. Container packages can initially be private even when their repository is public; keep their existing visibility unless an owner deliberately changes it.
+| Secret            | Value                                                                            |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `VPS_HOST`        | The VPS IP address or SSH hostname                                               |
+| `VPS_USER`        | SSH account holding the restricted authorized key; this installation uses `root` |
+| `VPS_PORT`        | `22`, or the configured SSH port                                                 |
+| `VPS_SSH_KEY`     | Dedicated Demoweb CI private key, including its header and footer                |
+| `VPS_KNOWN_HOSTS` | Verified SSH host-key entries for that host and port                             |
 
-No VPS auto-deployment is configured by this change. It publishes the image and supplies the production Compose definition.
+Set repository **Actions variable** `VPS_DEPLOY_ENABLED=true` once server provisioning and HTTPS are ready. Setting it to `false` pauses deployment while keeping CI and publication active. Never disable SSH host-key verification. Verify a host fingerprint through a trusted channel before saving it.
 
-## Run a published image
+The dedicated key is restricted in the server account's `authorized_keys`:
 
-On a machine with Node.js 24, Docker Engine and Docker Compose v2:
+```text
+restrict,command="/opt/demoweb/deploy-image.sh /opt/demoweb" ssh-ed25519 <public-key> demoweb-github-actions
+```
+
+The fixed command accepts only a digest from this repository plus registry credentials. It does not evaluate `SSH_ORIGINAL_COMMAND`, provide an interactive shell, forward ports or accept arbitrary paths. Keep the administrator SSH key separate. Updating Compose, the deployment script, Nginx or secrets requires administrator provisioning; ordinary releases update only the image.
+
+## Server provisioning
+
+Requires Docker Engine, Docker Compose v2, Bash, `flock`, Nginx and Certbot. Create `/opt/demoweb` with mode 700. Copy these reviewed files there:
+
+- `compose.production.yaml`
+- `scripts/deploy-image.sh` as `deploy-image.sh` (mode 755)
+- `deploy/nginx/renew-hook.sh` as `renew-hook.sh` (mode 755)
+
+Generate the deployment environment on a trusted machine with Node.js 24:
 
 ```sh
 node scripts/setup-production-env.mjs
-docker compose --env-file .env.deploy -f compose.production.yaml pull
-docker compose --env-file .env.deploy -f compose.production.yaml up -d --wait
 ```
 
-The setup command creates an ignored `.env.deploy` with a random database password and a matching internal `DATABASE_URL`. It preserves an existing file and does not print credentials. This filename is deliberately outside Next.js automatic environment loading, so the container's database URL cannot override local development settings. Protect this file and back it up separately from Git. Do not substitute the local-development `.env`: its database URL addresses host port 5433, whereas production uses the internal `db:5432` service.
+Transfer the resulting ignored `.env.deploy` to `/opt/demoweb/.env.deploy` through SSH and set mode 600. The generator creates a random database password and matching internal URL, preserves existing files and never prints credentials. Do not use the local development `.env`: it addresses host port 5433 instead of the production `db:5432` service.
 
-For a private GHCR package, authenticate the deployment machine first with an account token that has `read:packages`, supplied through `docker login ghcr.io --username <account> --password-stdin`. Never put that token in Compose, Git or image build arguments.
+| Setting                                             | Meaning                                                                   |
+| --------------------------------------------------- | ------------------------------------------------------------------------- |
+| `DEMOWEB_IMAGE`                                     | Default image for manual commands; CI overrides it with a verified digest |
+| `DEMOWEB_BIND_ADDRESS`                              | `127.0.0.1`; Nginx is the public entrypoint                               |
+| `DEMOWEB_PORT`                                      | `1112`; container port is also 1112                                       |
+| `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD` | Database initialization settings                                          |
+| `DATABASE_URL`                                      | Connection string for `db:5432`; password must match PostgreSQL           |
+| `DEMO_NAMESPACE`                                    | Optional application namespace; defaults to `default`                     |
 
-| Setting in `.env.deploy`                            | Meaning                                                                                                            |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `DEMOWEB_IMAGE`                                     | Published image tag or immutable digest                                                                            |
-| `DEMOWEB_BIND_ADDRESS`                              | Defaults to `127.0.0.1`; expose through a configured reverse proxy or private network                              |
-| `DEMOWEB_PORT`                                      | Host port, default `3001`; container port stays 3001                                                               |
-| `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD` | Database initialization settings                                                                                   |
-| `DATABASE_URL`                                      | Application connection string for `db:5432`; password must match PostgreSQL and be URL-encoded if changed manually |
-| `DEMO_NAMESPACE`                                    | Optional application namespace; defaults to `default`                                                              |
+PostgreSQL has no published host port. Production records live in the `demoweb_postgres_data` volume. The web container is limited to 768 MiB and one CPU; PostgreSQL to 512 MiB and one CPU. Both have PID limits. Application startup waits for healthy PostgreSQL and successful transactional migrations; `/health` checks database readiness.
 
-The application starts only after PostgreSQL is healthy and the transaction/advisory-lock migration succeeds. `/health` verifies the application table is reachable. The database has no published host port in production. Data lives in `demoweb_postgres_data` with the default Compose project name; the local development stack uses a different volume. `down` preserves the volume; `down -v` deletes its data.
+## DNS and HTTPS
 
-These are UAT targets with synthetic accounts and deliberate lab faults. Use an appropriate private network or access gate for the intended testers. A Veriflow browser container needs a reachable target address: its own loopback is not this container. Configure the shared Docker network or reverse proxy deliberately; keep the project's allowed origin consistent with the chosen URL.
-
-## Updating and rollback
-
-Set `DEMOWEB_IMAGE` to the desired verified digest, then run `pull` and `up -d --wait` again. Retain the previous digest for a code rollback. Database credentials are initialized only on an empty PostgreSQL volume; changing `.env.deploy` alone does not rotate an existing database password. Back up PostgreSQL before schema changes. Restoring an older image does not undo database migrations or restore data.
-
-## Local image verification
+1. Point the `demoweb` DNS A record at the VPS. With Cloudflare proxying enabled, configure **Full (strict)** for this hostname using a configuration rule. Preserve unrelated hostnames' settings.
+2. Install `deploy/nginx/demoweb-http.conf` as `/etc/nginx/sites-available/demoweb`, enable its symlink under `sites-enabled`, create `/var/www/demoweb-acme`, validate `nginx -t` and reload.
+3. Issue the certificate:
 
 ```sh
+certbot certonly --webroot -w /var/www/demoweb-acme \
+  -d demoweb.madacoda.dev --email <operator-email> --agree-tos \
+  --non-interactive --deploy-hook /opt/demoweb/renew-hook.sh
+```
+
+4. Replace that virtual host with `deploy/nginx/demoweb.conf`, validate `nginx -t` and reload. This enables HTTPS, redirects HTTP, preserves the ACME challenge path and proxies to `127.0.0.1:1112`. Check the Certbot renewal timer.
+5. Verify both `https://demoweb.madacoda.dev/health` and the application in a browser.
+
+The proxy supplies the external host and HTTPS scheme for same-origin validation and Secure cookies. Access logs omit query strings. A Cloudflare Flexible setting causes redirect loops with this HTTPS origin; use the hostname-scoped strict rule.
+
+These are intentionally faulty UAT targets with synthetic accounts. Use synthetic data when testing them. Veriflow can target the public HTTPS address; its container's loopback does not refer to Demoweb.
+
+## Updating, diagnostics and rollback
+
+After checks pass, merge the pull request. Main publishes and deploys automatically. SSH deployment is serialized with `flock`; failed health checks restore the previous local image, or stop the failed web container on the first release. PostgreSQL data is retained. The successful digest is atomically written to `/opt/demoweb/current-image`.
+
+To inspect or restart the current release as an administrator, explicitly use that retained digest; `.env.deploy` may still contain the initial default tag:
+
+```sh
+cd /opt/demoweb
+export DEMOWEB_IMAGE="$(cat current-image)"
+docker compose --env-file .env.deploy -f compose.production.yaml ps
+docker compose --env-file .env.deploy -f compose.production.yaml logs --tail 100 web
+docker compose --env-file .env.deploy -f compose.production.yaml up -d --wait --pull never
+curl --fail http://127.0.0.1:1112/health
+```
+
+For a manual code rollback, set `DEMOWEB_IMAGE` to a previous verified digest, authenticate/pull it if no longer cached, then run `up -d --wait`. After confirming health, record that digest in `current-image`. An image rollback does **not** reverse database migrations or restore records. Back up PostgreSQL and `.env.deploy` before schema changes; keep migrations compatible with the previous release.
+
+Database credentials are initialized only for an empty volume. Changing the environment file does not rotate an existing database password. Never run `down -v` against production unless deliberately deleting its data. This single-VPS setup can briefly interrupt requests during an application replacement; it is not a zero-downtime deployment.
+
+## Local verification
+
+```sh
+bun run lint
+bun run format:check
+bun run typecheck
 docker build -t demoweb:test .
+bash scripts/tests/deploy.test.sh
 bash scripts/container-smoke.sh demoweb:test
 ```
 
-The smoke script requires Bash, Docker Compose, Node.js 24 and free host port 3002. It uses fresh isolated PostgreSQL data and never uses `.env.deploy` or a production volume. Windows can run this check in a Docker-enabled WSL environment; GitHub Actions provides the authoritative Linux image check.
+The container smoke script requires Bash, Docker Compose, Node.js 24 and free **test-only host port 3002**; the container still listens on 1112. It creates fresh isolated PostgreSQL data and cleans up only that disposable project. GitHub Actions provides the authoritative Linux container check when Docker is unavailable locally.
 
-References: [GitHub image publication](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images) and [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output).
+References: [GitHub registry authentication](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry), [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output) and [Cloudflare encryption modes](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/).

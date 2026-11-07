@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-const origin = "http://127.0.0.1:3001";
+const origin = "http://127.0.0.1:1112";
 
 test("storefront has a working catalog, search, categories, sorting, and product pages", async ({
   page,

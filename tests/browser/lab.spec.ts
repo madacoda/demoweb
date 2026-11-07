@@ -2,7 +2,7 @@ import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
 import { nextWorkday, hrPassword } from "../../app/hris/model";
-const origin = "http://127.0.0.1:3001";
+const origin = "http://127.0.0.1:1112";
 async function start(page: Page, scenario: string) {
   const response = await page.request.post(`${origin}/lab/api`, {
     data: { action: "start", scenario },
