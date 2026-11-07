@@ -1,0 +1,7 @@
+node_modules
+.next
+.local
+bun.lock
+next-env.d.ts
+test-results
+playwright-report

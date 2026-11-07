@@ -1,0 +1,47 @@
+{
+  "name": "demo-district",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3001",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3001",
+    "setup": "node scripts/setup-env.mjs && docker compose up -d --wait db && bun run db:migrate",
+    "db:up": "docker compose up -d --wait db",
+    "db:down": "docker compose down",
+    "db:migrate": "node --env-file=.env --import tsx scripts/migrate.ts",
+    "db:import": "node --env-file=.env --import tsx scripts/import-legacy.ts",
+    "db:check": "node --env-file=.env --import tsx scripts/check-db.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --env-file=.env --import tsx --test app/demo/_lib/store.test.ts app/demo/sites/_lib/workspace.test.ts tests/postgres.test.ts",
+    "test:browser": "playwright test",
+    "browsers:install": "playwright install chromium"
+  },
+  "dependencies": {
+    "next": "16.4.5",
+    "pg": "^8.16.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.0",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.5",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,30 @@
+name: Website checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run setup
+      - run: bun run lint && bun run format:check && bun run typecheck
+      - run: bun run test
+      - run: bun run build
+      - run: bun run browsers:install --with-deps
+      - run: bun run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

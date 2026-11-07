@@ -1,0 +1,21 @@
+name: demo-district
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-demo_district}
+      POSTGRES_DB: ${POSTGRES_DB:-demo_district}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-env.mjs first}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+volumes:
+  postgres_data:
